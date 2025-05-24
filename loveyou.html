@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Te Amo - Matrix Style</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+            font-family: monospace;
+            cursor: pointer;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .love-popup {
+            position: absolute;
+            font-size: 2em;
+            color: #ff69b4;
+            pointer-events: none;
+            animation: pop 2s ease-out forwards;
+            text-shadow: 0 0 10px #ff69b4, 0 0 20px #ff1493;
+        }
+
+        @keyframes pop {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-50px) scale(1.5);
+            }
+        }
+
+        .romantic-message {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #ff69b4;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff69b4, 0 0 20px #ff1493;
+            opacity: 0;
+            transition: opacity 2s ease;
+            z-index: 2;
+        }
+
+        .romantic-message.show {
+            opacity: 1;
+        }
+
+        .heart {
+            position: absolute;
+            color: red;
+            font-size: 1.2em;
+            animation: floatUp 5s linear forwards;
+            pointer-events: none;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-200px) scale(1.5);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="matrixCanvas"></canvas>
+    <div class="romantic-message" id="romanticMessage">
+    </div>
+
+    <script>
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth;
+
+        const phrase = 'TE AMO ';
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+        const drops = Array.from({ length: columns }).fill(0);
+        const speed = 0.5;
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#0F0';
+            ctx.font = `${fontSize}px monospace`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const charIndex = Math.floor(drops[i]) % phrase.length;
+                const text = phrase[charIndex];
+
+                ctx.fillText(text, i * fontSize, Math.floor(drops[i]) * fontSize);
+
+                if (drops[i] * fontSize > canvas.height || Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+
+                drops[i] += speed;
+            }
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+
+
+        function showLove(x, y) {
+            const msg = Math.random() > 0.5 ? '🌹💖' : 'Te Amo 💖';
+            const popup = document.createElement('div');
+            popup.className = 'love-popup';
+            popup.textContent = msg;
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+            document.body.appendChild(popup);
+
+            setTimeout(() => popup.remove(), 2000);
+        }
+        canvas.addEventListener('click', e => {
+            showLove(e.clientX, e.clientY);
+        });
+
+
+        const romanticMessages = [
+            "Cada letra es un latido... y cada latido dice: Te Amo 💖",
+            "Eres mi código favorito 💻❤️",
+            "Si el amor fuera un loop... contigo nunca terminaría 🔁💘"
+        ];
+
+        const msgElem = document.getElementById('romanticMessage');
+        let currentIndex = 0;
+
+        function showRomanticMessage() {
+            msgElem.textContent = romanticMessages[currentIndex];
+            msgElem.classList.add('show');
+
+            setTimeout(() => {
+                msgElem.classList.remove('show');
+            }, 6000);
+
+            currentIndex = (currentIndex + 1) % romanticMessages.length;
+        }
+        setTimeout(() => {
+            showRomanticMessage();
+            setInterval(showRomanticMessage, 10000);
+        }, 5000);
+
+        // Función para generar corazones
+        function spawnHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'heart';
+            heart.textContent = '❤️';
+            heart.style.left = `${Math.random() * 100}%`;
+            heart.style.top = `${window.innerHeight}px`;
+            document.body.appendChild(heart);
+
+            setTimeout(() => heart.remove(), 5000);
+        }
+        setInterval(spawnHeart, 800);
+
+        function requestFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { /* IE11 */
+                elem.msRequestFullscreen();
+            }
+        }
+    </script>
+</body>
+
+</html>
