@@ -1,0 +1,515 @@
+<!-- CS372 - Project 3 / Daniel Kim (jk254) -->
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Modern Flower</title>
+		<style>
+			body { margin: 0; }
+            #controls {
+                position: absolute;
+                top: 35px;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #miscCtrl {
+                display: flex;
+                flex-direction: row;
+            }
+
+            #toggleAudio {
+                border: none;
+                transition: background-color 0.3s;
+                border-radius: 10px;
+                padding: 5px;
+            }
+
+            #audioLabel {
+                align-self: center;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+            }
+
+            #resetBtn {
+                border: none;
+                background-color: #C9D7DD;
+                transition: background-color 0.4s;
+                border-radius: 10px;
+                margin-right: 10px;
+                padding: 5px;
+                font-size: 15px;
+                font-weight: bold;
+            }
+
+            #resetBtn:hover {
+                background-color: #DCF2F1;
+                transition: background-color 0.4s;
+            }
+
+            #slider {
+                background-color: #78C1F3;
+                margin-bottom: 10px;
+                border: none;
+                width: 200px;
+                -webkit-appearance: none;
+                appearance: none;
+                height: 5px;
+                border-radius: 3px;
+                background: #d3d3d3;
+                outline: none;
+                opacity: 0.7;
+                -webkit-transition: 0.4s;
+                transition: opacity 0.4s;
+            }
+
+		</style>
+	</head>
+	<body>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+                    "OrbitControls": "https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js"
+                }
+            }
+        </script>
+        <script type="module">
+            import * as THREE from 'three';
+            import { OrbitControls } from 'OrbitControls';
+
+            // Create scene
+            const scene = new THREE.Scene();
+
+            // Animation parameters
+            const initialPosition = new THREE.Vector3(2400, 4000, 3200);
+            const finalPosition = new THREE.Vector3(600, 1000, 800);
+            const animationDuration = 3; // seconds
+            let animationStartTime;
+            const rotationSpeed = 0.0003;
+
+            // Create camera
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000000);
+            // camera.position.set(600, 1000, 800);
+            // camera.lookAt(0, 0, 0);
+            camera.far = 4000;
+            camera.updateProjectionMatrix();
+
+            // Create renderer
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.shadowMap.enabled = true;
+            renderer.setClearColor(0xEEEDEB);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Create orbit controls
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            controls.screenSpacePanning = false;
+            controls.maxDistance = 5000;
+            controls.minDistance = 200;
+            controls.maxPolarAngle = Math.PI / 2 + 0.2;
+
+            // Create clock
+            const clock = new THREE.Clock();
+
+            // Create light
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(100, 1000, 100);
+            scene.add(light);
+
+            // Enable shadows for the light
+            light.castShadow = true;
+            light.shadow.mapSize.width = 2048;
+            light.shadow.mapSize.height = 2048;
+
+            // // Set up shadow camera parameters
+            const d = 1000;
+            light.shadow.camera.left = -d;
+            light.shadow.camera.right = d;
+            light.shadow.camera.top = d;
+            light.shadow.camera.bottom = -d;
+            light.shadow.camera.near = 1;
+            light.shadow.camera.far = 3000;
+
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0xFFFFFF, 2.0);
+            scene.add(ambientLight);
+
+            // create a global audio source
+            const listener = new THREE.AudioListener();
+            const sound = new THREE.Audio( listener );
+
+            // load a sound and set it as the Audio object's buffer
+            const audioLoader = new THREE.AudioLoader();
+            audioLoader.load( 'sounds/forestAmbience.mp3', function( buffer ) {
+                sound.setBuffer( buffer );
+                sound.setLoop( true );
+                sound.setVolume( 0 );
+                sound.autoplay = true;
+            });
+
+        
+
+    
+
+            // Initial number of columns
+            let cols = 440;
+
+
+            // DRAW (init)
+            draw();
+
+            // ======== <Draw Functions> ======== //
+            // Create plane geometry
+            function drawPlane() {
+                const planeGeometry = new THREE.PlaneGeometry(1450, 1450);
+                const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x597E52 });
+                const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+                plane.position.y = -300;
+                plane.rotation.x = -Math.PI / 2;
+                scene.add(plane);
+            }
+
+            function draw() {
+                // Delete existing objects
+                while (scene.children.length > 0) {
+                    const child = scene.children[0];
+                    // Dispose of geometries and materials to release resources
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+
+                    if (child.material) {
+                        // If it's a shader material, dispose of the uniforms as well
+                        if (child.material.isShaderMaterial) {
+                            child.material.uniforms = null;
+                        }
+                        child.material.dispose();
+                    }
+                    scene.remove(child);
+                }
+
+                // Draw Grass
+                // Source: https://discourse.threejs.org/t/simple-instanced-grass-example/26694
+                // Vertex shader
+                const vertexShader = `
+                    varying vec2 vUv;
+                    uniform float time;
+                    void main() {
+                        vUv = uv;
+                        
+                        // VERTEX POSITION
+                        vec4 mvPosition = vec4( position, 1.0 );
+                        #ifdef USE_INSTANCING
+                            mvPosition = instanceMatrix * mvPosition;
+                        #endif
+                        
+                        // DISPLACEMENT
+                        float dispPower = 1.0 - cos( uv.y * 3.1416 / 2.0 );
+                        float displacement = sin( mvPosition.z + time * 3.0 ) * ( 0.9 * dispPower );
+                        mvPosition.z += displacement / 0.3;
+                        mvPosition.x += displacement / 0.3;
+                        
+                        vec4 modelViewPosition = modelViewMatrix * mvPosition;
+                        gl_Position = projectionMatrix * modelViewPosition;
+                    }
+                `;
+                
+                // Fragment shader
+                const fragmentShader = `
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        vec3 baseColor = vec3( 0.41, 1.0, 0.5 );
+                        float clarity = ( vUv.y * 0.5 ) + 0.5;
+                        gl_FragColor = vec4( baseColor * clarity, 1 );
+                    }
+                `;
+                
+                // Time uniform
+                const uniforms = {
+                    time: {
+                        value: 0
+                    }
+                }
+                
+                const leavesMaterial = new THREE.ShaderMaterial({
+                    vertexShader,
+                    fragmentShader,
+                    uniforms,
+                    side: THREE.DoubleSide
+                });
+                
+                // Number of leaves
+                const instanceNumber = 30000;
+                const grassPos = new THREE.Object3D();
+                
+                const geometry = new THREE.PlaneGeometry( 10, 100, 1, 4 );
+                geometry.translate( 0, -230, 0 );
+                const grassMesh = new THREE.InstancedMesh( geometry, leavesMaterial, instanceNumber );
+                scene.add( grassMesh );
+                
+                for ( let i=0 ; i < instanceNumber ; i++ ) {
+                    grassPos.position.set(
+                        ( Math.random() - 0.5 ) * 1500,
+                        0,
+                        ( Math.random() - 0.5 ) * 1500
+                    );
+                    grassPos.scale.setScalar( 0.5 + Math.random() * 0.7 );
+                    grassPos.rotation.y = Math.random() * Math.PI;
+                    grassPos.updateMatrix();
+                    grassMesh.setMatrixAt( i, grassPos.matrix );
+                    grassMesh.castShadow = true;
+                    grassMesh.receiveShadow = true;
+                }
+                
+                // Render
+                const animate = function () {
+                    const time = clock.getElapsedTime();
+                    leavesMaterial.uniforms.time.value = clock.getElapsedTime();
+                    leavesMaterial.needsUpdate = true;
+                    scene.getObjectByName('stem').rotation.x = Math.sin(time) / 30;
+                    requestAnimationFrame(animate);
+                    scene.rotation.y -= 0.0003;
+                    renderer.render(scene, camera);
+                };
+
+                // Draw remaining objects
+                drawPlane();
+                drawStem();
+                animate();
+            }
+
+            // Draw stem
+            function drawStem() {
+                // Vertex Shader
+                const stemVertexShader = `
+                    varying vec3 vColor;
+                    void main() {
+                        vColor = mix(vec3(0.22, 0.32, 0.27), vec3(0.36, 0.7, 0.09), position.y / 2000.0);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+
+                // Fragment Shader
+                const stemFragmentShader = `
+                    varying vec3 vColor;
+                    void main() {
+                        gl_FragColor = vec4(vColor, 1.0);
+                    }
+                `;
+
+                // Material
+                const stemMaterial = new THREE.ShaderMaterial({
+                    vertexShader: stemVertexShader,
+                    fragmentShader: stemFragmentShader,
+                    side: THREE.DoubleSide
+                });
+
+                const geometry = new THREE.CylinderGeometry(18, 25, 600, 8, 1, false, 0, Math.PI * 2);
+                const stemMesh = new THREE.Mesh(geometry, stemMaterial);
+                stemMesh.castShadow = true;
+                stemMesh.receiveShadow = true;
+                stemMesh.name = 'stem'; // Set a name for easy access
+
+                // Add sepals to the stem
+                const sepals = drawSepals();
+                stemMesh.add(sepals);
+                
+                // Add rose to the stem
+                const rose = drawRose();
+                stemMesh.add(rose);
+                scene.add(stemMesh);
+            }
+
+            // Draw rose
+            // Source: https://stackoverflow.com/questions/71170148/porting-3d-rose-written-by-wolfram-language-into-javascript
+            function drawRose() {
+                let positions = [];
+                let v = [];
+                // Set the number of columns (default = 440)
+                // let cols = 440;
+                let rows = 20, t_D = (180 * 15) / cols, r_D = 1 / rows, opening = 2.0, vDensity = 8.0, pAlign = 3.6, curve1 = 2.0, curve2 = 1.3;
+
+                // Create vertices
+                for (let r = 0; r <= rows; r++) {
+                    // Create row
+                    v.push([]);
+                    // Create column
+                    for (let theta = 0; theta <= cols; theta++) {
+                        let phi = (180 / opening) * Math.exp((-theta * t_D) / (vDensity * 180)) * (Math.PI / 180);
+                        let petalCut = 1 - (1 / 2) * Math.pow( (5 / 4) * Math.pow(1 - ((pAlign * theta * t_D) % 360) / 180, 2) - 1 / 4, 2);
+                        let hangDown = curve1 * Math.pow(r * r_D, 2) * Math.pow(curve2 * r * r_D - 1, 2) * Math.sin(phi);
+                        let pX = 250 * petalCut * (r * r_D * Math.sin(phi) + hangDown * Math.cos(phi)) * Math.sin(theta * t_D);
+                        let pY = -250 * petalCut * (r * r_D * Math.cos(phi) - hangDown * Math.sin(phi));
+                        let pZ = 250 * petalCut * (r * r_D * Math.sin(phi) + hangDown * Math.cos(phi)) * Math.cos(theta * t_D);
+                        let pos = new THREE.Vector3(pX, pY * -1, pZ);
+                        v[r].push(pos);
+                    }
+                }
+
+                // Create faces
+                for(let r=0; r < v.length; r++){
+                    for(let theta =0; theta < v[r].length; theta++) {
+                        // if not at the end of the array
+                        if(r < v.length-1 && theta< v[r].length-1) {
+                            // draw two triangles
+                            positions.push(v[r][theta].x*1, v[r][theta].y*1, v[r][theta].z*1);
+                            positions.push(v[r+1][theta].x*1, v[r+1][theta].y*1, v[r+1][theta].z*1);
+                            positions.push(v[r+1][theta+1].x*1,v[r+1][theta+1].y*1,v[r+1][theta+1].z*1);
+                            positions.push(v[r][theta].x*1, v[r][theta].y*1, v[r][theta].z*1);
+                            positions.push(v[r][theta+1].x*1,v[r][theta+1].y*1,v[r][theta+1].z*1);
+                            positions.push(v[r+1][theta+1].x*1,v[r+1][theta+1].y*1,v[r+1][theta+1].z*1);
+                        }
+                    }
+                }
+
+                let arr = new Float32Array(positions);
+
+                let geometry = new THREE.BufferGeometry();
+                geometry.setAttribute("position", new THREE.Float32BufferAttribute(arr, 3));
+                geometry.computeBoundingSphere();
+                geometry.computeBoundingBox();
+
+                let uniforms = {
+                    bbMin: { value: geometry.boundingBox.min },
+                    bbMax: { value: geometry.boundingBox.max },
+                    color1: { value: new THREE.Color(0xdd3131) },
+                    color2: { value: new THREE.Color(0xffc0c0) },
+                    color3: { value: new THREE.Color(0xffb9c4) },
+                    color4: { value: new THREE.Color(0xffe1ec) }
+                };
+
+                let material = new THREE.MeshBasicMaterial({
+                    side: THREE.DoubleSide,
+                    onBeforeCompile: (shader) => {
+                        shader.uniforms.bbMin = uniforms.bbMin;
+                        shader.uniforms.bbMax = uniforms.bbMax;
+                        shader.uniforms.color1 = uniforms.color1;
+                        shader.uniforms.color2 = uniforms.color2;
+                        shader.uniforms.color3 = uniforms.color3;
+                        shader.vertexShader = `
+                            varying vec2 vUv;
+                            varying vec3 vPos;
+                            ${shader.vertexShader}
+                            `.replace(
+                                `#include <begin_vertex>`,
+                                `#include <begin_vertex>
+                                vPos = transformed;
+                                vUv = uv;
+                                `
+                            );
+                        shader.fragmentShader = `
+                            uniform vec3 bbMin;
+                            uniform vec3 bbMax;
+                            uniform vec3 color1;
+                            uniform vec3 color2;
+                            uniform vec3 color3;
+                            varying vec2 vUv;
+                            varying vec3 vPos;
+                            ${shader.fragmentShader}
+                            `.replace(
+                                `vec4 diffuseColor = vec4( diffuse, opacity );`,
+                                `
+                                float f = clamp((vPos.y - bbMin.y) / (bbMax.y - bbMin.y), 0.0, 1.);
+                                vec3 col = mix(color1, color2, f);
+                                float f2 = clamp(vUv.x, 0.9, 1.);
+                                col = mix(color3, col, f2);
+                                // col = mix(color3, col, f2);
+                                vec4 diffuseColor = vec4( col, opacity );`
+                            );
+                    }
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.y = 300;
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mesh.name = 'rose'; // Set a name for easy access
+                return mesh;
+            }
+
+            // Draw Sepal
+            function drawSepal() {
+                const sepalShape = new THREE.Shape();
+
+                // Define the sepal shape using bezier curves
+                sepalShape.moveTo(0, 0);
+                sepalShape.bezierCurveTo(30, 30, 120, 30, 150, 0);
+                sepalShape.bezierCurveTo(120, -30, 30, -30, 0, 0);
+
+                // Extrude and rotate the sepal shape
+                const extrudeSettings = {
+                    steps: 4,
+                    depth: 2,
+                    bevelEnabled: true,
+                };
+
+                const sepalGeometry = new THREE.ExtrudeGeometry(sepalShape, extrudeSettings);
+                const sepalMaterial = new THREE.MeshBasicMaterial({ color: 0x50623A });
+
+                const sepalMesh = new THREE.Mesh(sepalGeometry, sepalMaterial);
+                sepalMesh.rotateX(Math.PI / 2);
+                sepalMesh.translateZ(15);
+                sepalMesh.castShadow = true;
+                sepalMesh.receiveShadow = true;
+                return sepalMesh;
+            }
+
+            // Draw seven sepals and rotate them around the rose
+            function drawSepals() {
+                const sepals = new THREE.Group();
+                let iterNum = 7;
+                
+                // Draw seven sepals
+                for (let i = 0; i < iterNum; i++) {
+                    const sepal = drawSepal();
+                    sepal.rotation.z = (i / iterNum) * Math.PI * 2;
+                    sepals.add(sepal);
+                }
+
+                // Adjust position and add the sepals to the scene
+                sepals.position.set(0, 300, 0);
+                sepals.name = 'sepals'; // Set a name for easy access
+                return sepals;
+            }
+
+            // Set initial camera position
+            camera.position.copy(initialPosition);
+            camera.lookAt(0, 0, 0);
+
+            // Animate the camera to zoom in on the first load
+            function animateZoomIn() {
+                const elapsedSeconds = (Date.now() - animationStartTime) / 1000;
+                const progress = easeInOutSine(Math.min(1, elapsedSeconds / animationDuration));
+
+                // Interpolate between initial and final positions
+                const newPosition = new THREE.Vector3().lerpVectors(initialPosition, finalPosition, progress);
+                camera.position.copy(newPosition);
+
+                // Continue animating until reaching the final position
+                if (progress < 1) {
+                    requestAnimationFrame(animateZoomIn);
+                }
+            }
+
+            // Easing function (easeInOutSine)
+            function easeInOutSine(t) {
+                return -0.5 * (Math.cos(Math.PI * t) - 1);
+            }
+
+            // Trigger the animation when the page is loaded
+            window.onload = function () {
+                animationStartTime = Date.now();
+                animateZoomIn();
+            };
+        </script>
+	</body>
+</html>

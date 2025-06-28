@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>¿Mi San Valentín? 💘</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      height: 100vh;
+      background: linear-gradient(to bottom right, #ffc0cb, #ffe4e1, #ffccf9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .wrapper {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 40px 20px;
+      border-radius: 20px;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      z-index: 2;
+      position: relative;
+    }
+
+    h2 {
+      font-size: 2.2em;
+      color: #e94d58;
+      margin-bottom: 25px;
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      position: relative;
+      height: 45px;
+    }
+
+    button {
+      width: 120px;
+      height: 45px;
+      border: none;
+      border-radius: 25px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .yes-btn {
+      background-color: #e91e63;
+      color: white;
+      z-index: 2;
+    }
+
+    .no-btn {
+      background-color: #f44336;
+      color: white;
+      position: fixed;
+      top: 60%;
+      left: 55%;
+      z-index: 3;
+    }
+
+    .heart {
+      position: absolute;
+      color: red;
+      font-size: 24px;
+      animation: floatUp 3s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-100vh) scale(1.5);
+        opacity: 0;
+      }
+    }
+
+    .valentine-img {
+      width: 100%;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      max-height: 200px;
+      object-fit: cover;
+    }
+
+    .glitter {
+      position: fixed;
+      width: 5px;
+      height: 5px;
+      background: #fff;
+      border-radius: 50%;
+      animation: sparkle 2s linear infinite;
+      opacity: 0.8;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    @keyframes sparkle {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-100vh) scale(1.5);
+        opacity: 0;
+      }
+    }
+
+    audio {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="wrapper">
+    <img class="valentine-img" src="TU_IMAGEN_AQUI.jpg" alt="Feliz San Valentín 💘">
+    <h2 class="question">¿Quieres ser mi San Valentín? 🥺</h2>
+
+    <div class="btn-group">
+      <button class="yes-btn">Sí 💝</button>
+    </div>
+  </div>
+
+  <button class="no-btn">No 😢</button>
+
+  <!-- 🎵 Música de fondo + efectos -->
+  <audio id="bg-music" autoplay loop>
+    <source src="TU_MUSICA_ROMANTICA_AQUI.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- 🎙️ Voz diciendo "Feliz San Valentín" -->
+  <audio id="voice" src="https://www.myinstants.com/media/sounds/feliz-san-valentin.mp3"></audio>
+
+  <!-- 🔊 Confirmación tipo anime -->
+  <audio id="love-sound" src="https://www.myinstants.com/media/sounds/anime-wow-sound-effect.mp3"></audio>
+
+  <script>
+    const question = document.querySelector(".question");
+    const yesBtn = document.querySelector(".yes-btn");
+    const noBtn = document.querySelector(".no-btn");
+    const loveSound = document.getElementById("love-sound");
+    const voice = document.getElementById("voice");
+
+    yesBtn.addEventListener("click", () => {
+      question.textContent = "¡Aceptaste! Eres mi San Valentín 💘🥰";
+      loveSound.play();
+      voice.play();
+      yesBtn.style.display = "none";
+      noBtn.style.display = "none";
+
+      // Corazones
+      for (let i = 0; i < 40; i++) {
+        const heart = document.createElement("div");
+        heart.classList.add("heart");
+        heart.style.left = Math.random() * 100 + "vw";
+        heart.style.top = "100vh";
+        heart.textContent = "❤️";
+        document.body.appendChild(heart);
+
+        setTimeout(() => heart.remove(), 3000);
+      }
+
+      // Glitter mágico ✨
+      for (let i = 0; i < 60; i++) {
+        const glitter = document.createElement("div");
+        glitter.classList.add("glitter");
+        glitter.style.left = Math.random() * 100 + "vw";
+        glitter.style.top = Math.random() * 100 + "vh";
+        glitter.style.animationDuration = (Math.random() * 2 + 1) + "s";
+        document.body.appendChild(glitter);
+
+        setTimeout(() => glitter.remove(), 4000);
+      }
+    });
+
+    noBtn.addEventListener('mouseover', () => {
+      const btnWidth = noBtn.offsetWidth;
+      const btnHeight = noBtn.offsetHeight;
+
+      const maxX = window.innerWidth - btnWidth;
+      const maxY = window.innerHeight - btnHeight;
+
+      const randomX = Math.random() * maxX;
+      const randomY = Math.random() * maxY;
+
+      noBtn.style.left = `${randomX}px`;
+      noBtn.style.top = `${randomY}px`;
+    });
+  </script>
+</body>
+
+</html>
